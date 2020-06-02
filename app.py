@@ -68,6 +68,12 @@ class Artist(db.Model):
     seeking_venue = db.Column(db.Boolean, nullable=False, default=False)
     seeking_description = db.Column(db.String(), nullable=True)
 
+    def __repr__(self):
+      return (f"<Venue id: {self.id}, name: {self.name}, genres: {self.genres}, "
+              f"city: {self.city }, state: {self.state}, phone: {self.phone}, website: {self.website}, "
+              f"facebook_link: {self.facebook_link}, image_link: {self.image_link}, seeking_venue: {self.seeking_venue}, "
+              f"seeking_description: {self.seeking_description}")
+
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
@@ -249,7 +255,6 @@ def create_venue_submission():
       seeking_talent = True if request.form.get("seeking") == "y" else False,
       seeking_description = request.form["seeking_description"]
     )
-    print(venue)
     db.session.add(venue)
     db.session.commit()
     # on successful db insert, flash success
@@ -448,14 +453,32 @@ def create_artist_form():
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
   # called upon submitting the new artist listing form
-  # TODO: insert form data as a new Venue record in the db, instead
-  # TODO: modify data to be the data object returned from db insertion
-
-  # on successful db insert, flash success
-  flash('Artist ' + request.form['name'] + ' was successfully listed!')
-  # TODO: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
-  return render_template('pages/home.html')
+  name = request.form["name"]
+  try:
+    artist = Artist(
+      name = request.form["name"],
+      genres = request.form.getlist("genres"),
+      city = request.form["city"],
+      state = request.form["state"],
+      phone = request.form["phone"],
+      website = request.form["website"],
+      facebook_link = request.form["facebook_link"],
+      image_link = request.form["image_link"],
+      seeking_venue = True if request.form.get("seeking") == "y" else False,
+      seeking_description = request.form["seeking_description"]
+    )
+    db.session.add(artist)
+    db.session.commit()
+    # on successful db insert, flash success
+    flash(f"Artist \"{artist.name}\" with ID: {artist.id} was successfully listed!")
+  except:
+    db.session.rollback()
+    print(sys.exc_info())
+    # on unsuccessful db insert, flash an error instead.
+    flash(f"An error occurred. Artist \"{name}\" could not be listed.")
+  finally:
+    db.session.close()
+  return redirect(url_for("index"))
 
 
 #  Shows
