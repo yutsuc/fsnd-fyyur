@@ -50,7 +50,7 @@ class Venue(db.Model):
     return (f"<Venue id: {self.id}, name: {self.name}, genres: {self.genres}, address: {self.address}, "
             f"city: {self.city }, state: {self.state}, phone: {self.phone}, website: {self.website}, "
             f"facebook_link: {self.facebook_link}, image_link: {self.image_link}, seeking_talent: {self.seeking_talent}, "
-            f"seeking_description: {self.seeking_description}")
+            f"seeking_description: {self.seeking_description} >")
 
 class Artist(db.Model):
   __tablename__ = "artist"
@@ -71,7 +71,7 @@ class Artist(db.Model):
     return (f"<Venue id: {self.id}, name: {self.name}, genres: {self.genres}, "
             f"city: {self.city }, state: {self.state}, phone: {self.phone}, website: {self.website}, "
             f"facebook_link: {self.facebook_link}, image_link: {self.image_link}, seeking_venue: {self.seeking_venue}, "
-            f"seeking_description: {self.seeking_description}")
+            f"seeking_description: {self.seeking_description} >")
 
 class Show(db.Model):
   __tablename__ = "show"
@@ -79,11 +79,11 @@ class Show(db.Model):
   venue_id = db.Column(db.Integer, db.ForeignKey("venue.id"), primary_key=True)
   artist_id = db.Column(db.Integer, db.ForeignKey("artist.id"), primary_key=True)
   start_time = db.Column(db.DateTime, nullable=False)
-  venue = db.relationship(Venue, backref=db.backref("shows", lazy=True))
-  artist = db.relationship(Artist, backref=db.backref("shows", lazy=True))
+  venue = db.relationship(Venue, backref=db.backref("shows", lazy="dynamic"))
+  artist = db.relationship(Artist, backref=db.backref("shows", lazy="dynamic"))
 
   def __repr__(self):
-    return f"<Show venue_id: {self.venue_id}, artist_id: {self.artist_id}, start_time: {self.start_time}"
+    return f"<Show venue_id: {self.venue_id}, artist_id: {self.artist_id}, start_time: {self.start_time} >"
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -113,31 +113,23 @@ def index():
 
 @app.route('/venues')
 def venues():
-  # TODO: replace with real venues data.
-  #       num_shows should be aggregated based on number of upcoming shows per venue.
-  data=[{
-    "city": "San Francisco",
-    "state": "CA",
-    "venues": [{
-      "id": 1,
-      "name": "The Musical Hop",
-      "num_upcoming_shows": 0,
-    }, {
-      "id": 3,
-      "name": "Park Square Live Music & Coffee",
-      "num_upcoming_shows": 1,
-    }]
-  }, {
-    "city": "New York",
-    "state": "NY",
-    "venues": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }]
-  # group by then use result set to join
-  print(db.session.query(Venue.state, Venue.city).group_by(Venue.state, Venue.city).all())
+  data = []
+  for location in Venue.query.group_by(Venue.state, Venue.city).with_entities(Venue.state, Venue.city).order_by("state", "city"):
+    location_venues = []
+    for v in Venue.query.filter_by(state = location.state, city = location.city).order_by("id"):
+      location_venues.append({
+        "id" : v.id,
+        "name" : v.name,
+        "num_upcoming_shows": len(v.shows.filter(Show.start_time >= datetime.now()).all())
+      })
+
+    location_data = {
+      "city": location.city,
+      "state": location.state,
+      "venues": location_venues
+    }
+    data.append(location_data)
+
   return render_template('pages/venues.html', areas=data)
 
 @app.route('/venues/search', methods=['POST'])
