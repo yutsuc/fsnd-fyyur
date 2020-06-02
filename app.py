@@ -8,6 +8,7 @@ import babel
 from flask import Flask, render_template, request, Response, flash, redirect, url_for
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
@@ -29,54 +30,54 @@ migrate=Migrate(app, db)
 # Models.
 #----------------------------------------------------------------------------#
 
+shows_association = db.Table("show",
+    db.Column("venue_id", db.Integer, db.ForeignKey("venue.id"), primary_key=True),
+    db.Column("artist_id", db.Integer, db.ForeignKey("artist.id"), primary_key=True),
+    db.Column("start_time", db.DateTime, nullable=False)
+)
+
 class Venue(db.Model):
-    __tablename__ = "venue"
+  __tablename__ = "venue"
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(), nullable=False)
-    genres = db.Column(db.ARRAY(db.String(120)), nullable=False)
-    address = db.Column(db.String(200), nullable=False)
-    city = db.Column(db.String(120), nullable=False)
-    state = db.Column(db.String(120), nullable=False)
-    phone = db.Column(db.String(120), nullable=False)
-    website = db.Column(db.String(500), nullable=True)
-    facebook_link = db.Column(db.String(500), nullable=True)
-    image_link = db.Column(db.String(500), nullable=True)
-    seeking_talent = db.Column(db.Boolean, nullable=False, default=False)
-    seeking_description = db.Column(db.String(), nullable=True)
-
-    def __repr__(self):
-      return (f"<Venue id: {self.id}, name: {self.name}, genres: {self.genres}, address: {self.address}, "
-              f"city: {self.city }, state: {self.state}, phone: {self.phone}, website: {self.website}, "
-              f"facebook_link: {self.facebook_link}, image_link: {self.image_link}, seeking_talent: {self.seeking_talent}, "
-              f"seeking_description: {self.seeking_description}")
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
+  id = db.Column(db.Integer, primary_key=True)
+  name = db.Column(db.String(), nullable=False)
+  genres = db.Column(db.ARRAY(db.String(120)), nullable=False)
+  address = db.Column(db.String(200), nullable=False)
+  city = db.Column(db.String(120), nullable=False)
+  state = db.Column(db.String(120), nullable=False)
+  phone = db.Column(db.String(120), nullable=False)
+  website = db.Column(db.String(500), nullable=True)
+  facebook_link = db.Column(db.String(500), nullable=True)
+  image_link = db.Column(db.String(500), nullable=True)
+  seeking_talent = db.Column(db.Boolean, nullable=False, default=False)
+  seeking_description = db.Column(db.String(), nullable=True)
+  artists = db.relationship("Show", secondary=shows_association, backref=db.backref("venues", lazy=True))
+  def __repr__(self):
+    return (f"<Venue id: {self.id}, name: {self.name}, genres: {self.genres}, address: {self.address}, "
+            f"city: {self.city }, state: {self.state}, phone: {self.phone}, website: {self.website}, "
+            f"facebook_link: {self.facebook_link}, image_link: {self.image_link}, seeking_talent: {self.seeking_talent}, "
+            f"seeking_description: {self.seeking_description}")
 
 class Artist(db.Model):
-    __tablename__ = "artist"
+  __tablename__ = "artist"
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(), nullable=False)
-    genres = db.Column(db.ARRAY(db.String(120)), nullable=False)
-    city = db.Column(db.String(120), nullable=False)
-    state = db.Column(db.String(120), nullable=False)
-    phone = db.Column(db.String(120), nullable=False)
-    website = db.Column(db.String(500), nullable=True)
-    facebook_link = db.Column(db.String(500), nullable=True)
-    image_link = db.Column(db.String(500), nullable=True)
-    seeking_venue = db.Column(db.Boolean, nullable=False, default=False)
-    seeking_description = db.Column(db.String(), nullable=True)
+  id = db.Column(db.Integer, primary_key=True)
+  name = db.Column(db.String(), nullable=False)
+  genres = db.Column(db.ARRAY(db.String(120)), nullable=False)
+  city = db.Column(db.String(120), nullable=False)
+  state = db.Column(db.String(120), nullable=False)
+  phone = db.Column(db.String(120), nullable=False)
+  website = db.Column(db.String(500), nullable=True)
+  facebook_link = db.Column(db.String(500), nullable=True)
+  image_link = db.Column(db.String(500), nullable=True)
+  seeking_venue = db.Column(db.Boolean, nullable=False, default=False)
+  seeking_description = db.Column(db.String(), nullable=True)
 
-    def __repr__(self):
-      return (f"<Venue id: {self.id}, name: {self.name}, genres: {self.genres}, "
-              f"city: {self.city }, state: {self.state}, phone: {self.phone}, website: {self.website}, "
-              f"facebook_link: {self.facebook_link}, image_link: {self.image_link}, seeking_venue: {self.seeking_venue}, "
-              f"seeking_description: {self.seeking_description}")
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+  def __repr__(self):
+    return (f"<Venue id: {self.id}, name: {self.name}, genres: {self.genres}, "
+            f"city: {self.city }, state: {self.state}, phone: {self.phone}, website: {self.website}, "
+            f"facebook_link: {self.facebook_link}, image_link: {self.image_link}, seeking_venue: {self.seeking_venue}, "
+            f"seeking_description: {self.seeking_description}")
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -129,6 +130,8 @@ def venues():
       "num_upcoming_shows": 0,
     }]
   }]
+  # group by then use result set to join
+  print(db.session.query(Venue.state, Venue.city).group_by(Venue.state, Venue.city).all())
   return render_template('pages/venues.html', areas=data)
 
 @app.route('/venues/search', methods=['POST'])
