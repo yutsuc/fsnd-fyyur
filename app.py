@@ -30,12 +30,6 @@ migrate=Migrate(app, db)
 # Models.
 #----------------------------------------------------------------------------#
 
-shows_association = db.Table("show",
-    db.Column("venue_id", db.Integer, db.ForeignKey("venue.id"), primary_key=True),
-    db.Column("artist_id", db.Integer, db.ForeignKey("artist.id"), primary_key=True),
-    db.Column("start_time", db.DateTime, nullable=False)
-)
-
 class Venue(db.Model):
   __tablename__ = "venue"
 
@@ -51,7 +45,7 @@ class Venue(db.Model):
   image_link = db.Column(db.String(500), nullable=True)
   seeking_talent = db.Column(db.Boolean, nullable=False, default=False)
   seeking_description = db.Column(db.String(), nullable=True)
-  artists = db.relationship("Show", secondary=shows_association, backref=db.backref("venues", lazy=True))
+
   def __repr__(self):
     return (f"<Venue id: {self.id}, name: {self.name}, genres: {self.genres}, address: {self.address}, "
             f"city: {self.city }, state: {self.state}, phone: {self.phone}, website: {self.website}, "
@@ -78,6 +72,18 @@ class Artist(db.Model):
             f"city: {self.city }, state: {self.state}, phone: {self.phone}, website: {self.website}, "
             f"facebook_link: {self.facebook_link}, image_link: {self.image_link}, seeking_venue: {self.seeking_venue}, "
             f"seeking_description: {self.seeking_description}")
+
+class Show(db.Model):
+  __tablename__ = "show"
+
+  venue_id = db.Column(db.Integer, db.ForeignKey("venue.id"), primary_key=True)
+  artist_id = db.Column(db.Integer, db.ForeignKey("artist.id"), primary_key=True)
+  start_time = db.Column(db.DateTime, nullable=False)
+  venue = db.relationship(Venue, backref=db.backref("shows", lazy=True))
+  artist = db.relationship(Artist, backref=db.backref("shows", lazy=True))
+
+  def __repr__(self):
+    return f"<Show venue_id: {self.venue_id}, artist_id: {self.artist_id}, start_time: {self.start_time}"
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -540,13 +546,26 @@ def create_shows():
 def create_show_submission():
   # called to create new shows in the db, upon submitting new show listing form
   # TODO: insert form data as a new Show record in the db, instead
+  try:
+    # on successful db insert, flash success
+    show = Show(
+      venue_id = request.form["venue_id"],
+      artist_id = request.form["artist_id"],
+      start_time = request.form["start_time"]
+    )
+    print(show)
+    db.session.add(show)
+    db.session.commit()
+    flash('Show was successfully listed!')
+  except:
+    db.session.rollback()
+    print(sys.exc_info())
+    # on unsuccessful db insert, flash an error instead
+    flash('An error occurred. Show could not be listed.')
+  finally:
+    db.session.close()
 
-  # on successful db insert, flash success
-  flash('Show was successfully listed!')
-  # TODO: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Show could not be listed.')
-  # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-  return render_template('pages/home.html')
+  return redirect(url_for("index"))
 
 @app.errorhandler(404)
 def not_found_error(error):
