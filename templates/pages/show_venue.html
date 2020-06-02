@@ -5,6 +5,7 @@
 	<div class="col-sm-6">
 		<h1 class="monospace">
 			{{ venue.name }}
+			<input id="deleteBtn" type="button" value="&cross;" aria-label="delete" data-id="{{ venue.id }}" style="color: red; background-color: transparent; border: none;">
 		</h1>
 		<p class="subtitle">
 			ID: {{ venue.id }}
@@ -74,6 +75,16 @@
 		{% endfor %}
 	</div>
 </section>
+
+<script>
+	document.getElementById("deleteBtn").onclick = e => {
+		e.preventDefault()
+		venueId = e.target.dataset["id"];
+		fetch("/venues/" + venueId, {
+			method: "DELETE"
+		}).then(response => window.location.replace("/"));
+	}
+</script>
 
 {% endblock %}
 
